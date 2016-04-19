@@ -823,7 +823,7 @@ var VKI = function(customConfig, layout, deadKeys, keyInputCallback) {
    */
   this.VKI_closeOthers = function() {
     function fireCloseEvent(angularElement) {
-      if(angularElement.getAttribute('VKI_attached') === 'true' && !angular.equals(self.VKI_target, angularElement)) {
+      if(self.VKI_target && angularElement.getAttribute('VKI_attached') === 'true' && self.VKI_target != angularElement) {
         var inputChild = angular.element(angularElement);
         inputChild.triggerHandler('VKI_close');
       }
