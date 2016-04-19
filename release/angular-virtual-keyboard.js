@@ -1,7 +1,7 @@
 /**
  * angular-virtual-keyboard
  * An AngularJs Virtual Keyboard Interface based on GreyWyvern VKI
- * @version v0.4.3
+ * @version v0.4.4
  * @author the-darc <darc.tec@gmail.com>
  * @link https://github.com/the-darc/angular-virtual-keyboard
  * @license MIT
@@ -83,7 +83,7 @@ var VKI = function(customConfig, layout, deadKeys, keyInputCallback) {
   this.VKI_clearPasswords = false;  // Clear password fields on focus
   this.VKI_imageURI = config.imageURI !== undefined ? config.imageURI : "";  // If empty string, use imageless mode
   this.VKI_clickless = 0;  // 0 = disabled, > 0 = delay in ms
-  this.VKI_activeTab = 0;  // Tab moves to next: 1 = element, 2 = keyboard enabled element
+  this.VKI_activeTab = config.activeTab || 0;  // Tab moves to next: 1 = element, 2 = keyboard enabled element
   this.VKI_keyCenter = config.keyCenter || 3;
   this.VKI_forcePosition = config.forcePosition || false;
   this.VKI_relative = config.relative === false ? false : true;
@@ -95,6 +95,7 @@ var VKI = function(customConfig, layout, deadKeys, keyInputCallback) {
   this.VKI_isWebKit = RegExp("KHTML").test(navigator.userAgent);
   this.VKI_isOpera = RegExp("Opera").test(navigator.userAgent);
   this.VKI_isMoz = (!this.VKI_isWebKit && navigator.product == "Gecko");
+  this.VKI_isVSOS = typeof VSOS !== 'undefined';
 
   this.VKI_enterSubmit = config.enterSubmit || false; // true to Submit forms when Enter is pressed. Fn to execute a custom function.
   this.VKI_showKbSelect = config.showKbSelect || false; // Defaults to hide keyboard selection combobox
@@ -307,7 +308,7 @@ var VKI = function(customConfig, layout, deadKeys, keyInputCallback) {
   }, false);
 
   if (!this.VKI_layout[this.VKI_kt])
-    return alert('No keyboard named "' + this.VKI_kt + '"');
+    return console.error('No keyboard named "' + this.VKI_kt + '"');
 
   this.VKI_langCode = {};
   var thead = document.createElement('thead');
@@ -585,10 +586,10 @@ var VKI = function(customConfig, layout, deadKeys, keyInputCallback) {
                 switch (lkey[1]) {
                   case "Caps": case "Shift":
                   case "Alt": case "AltGr": case "AltLk":
-                    VKI_addListener(td, 'click', (function(type) { return function() { self.VKI_modify(type); return false; }})(lkey[1]), false);
+                    VKI_addFastClickListener(td, (function(type) { return function() { self.VKI_modify(type); return false; }})(lkey[1]), false);
                     break;
                   case "Tab":
-                    VKI_addListener(td, 'click', function() {
+                    VKI_addFastClickListener(td, function() {
                       if (self.VKI_activeTab) {
                         if (self.VKI_target.form) {
                           var target = self.VKI_target, elems = target.form.elements;
@@ -609,7 +610,7 @@ var VKI = function(customConfig, layout, deadKeys, keyInputCallback) {
                     }, false);
                     break;
                   case "Bksp":
-                    VKI_addListener(td, 'click', function() {
+                    VKI_addFastClickListener(td, function() {
                       self.VKI_target.focus();
                       if (self.VKI_target.setSelectionRange && hasSelectionStartEnd(self.VKI_target) && !self.VKI_target.readOnly) {
                         var rng = [self.VKI_target.selectionStart, self.VKI_target.selectionEnd];
@@ -631,7 +632,7 @@ var VKI = function(customConfig, layout, deadKeys, keyInputCallback) {
                     }, false);
                     break;
                   case "Enter":
-                    VKI_addListener(td, 'click', function() {
+                    VKI_addFastClickListener(td, function() {
                       if (self.VKI_target.nodeName != "TEXTAREA") {
                         if (typeof self.VKI_enterSubmit === 'function') {
                           self.VKI_enterSubmit.apply({}, [self.VKI_target.value]);
@@ -646,7 +647,7 @@ var VKI = function(customConfig, layout, deadKeys, keyInputCallback) {
                     }, false);
                     break;
                   default:
-                    VKI_addListener(td, 'click', VKI_keyClick, false);
+                    VKI_addFastClickListener(td, VKI_keyClick, false);
 
                 } VKI_mouseEvents(td);
                 tr.appendChild(td);
@@ -833,7 +834,7 @@ var VKI = function(customConfig, layout, deadKeys, keyInputCallback) {
    */
   this.VKI_closeOthers = function() {
     function fireCloseEvent(angularElement) {
-      if(angularElement.getAttribute('VKI_attached') === 'true' && !angular.equals(self.VKI_target, angularElement)) {
+      if(self.VKI_target && angularElement.getAttribute('VKI_attached') === 'true' && self.VKI_target != angularElement) {
         var inputChild = angular.element(angularElement);
         inputChild.triggerHandler('VKI_close');
       }
@@ -930,6 +931,25 @@ var VKI = function(customConfig, layout, deadKeys, keyInputCallback) {
       elem.addEventListener(type, function(e) { func.call(elem, e); }, cap);
     } else if (elem.attachEvent)
       elem.attachEvent('on' + type, function() { func.call(elem); });
+  }
+
+  function VKI_addFastClickListener(elem, func, cap) {
+     if (self.VKI_isVSOS) {
+      VKI_addListener(elem, 'mouseover', function() {
+        if (!elem.vsostouched) {
+          elem.vsostouched = true;
+          func.apply(elem, arguments);
+        }
+        setTimeout(function(){delete elem.vsostouched}, 150);
+      }, cap);    
+      VKI_addListener(elem, 'mousedown', function() {
+        if (!elem.vsostouched) {
+          func.apply(elem, arguments);
+        }
+      }, cap);
+    } else {
+      VKI_addListener(elem, 'click', func, cap);
+    }
   }
 
   function VKI_findPos(obj) {
@@ -1083,6 +1103,7 @@ angular.module('angular-virtual-keyboard', [])
 			config.keyCenter = config.keyCenter || VKI_CONFIG.keyCenter;
 			config.sizeAdj = config.sizeAdj === false ? false : VKI_CONFIG.sizeAdj;
 			config.customClass = config.customClass || VKI_CONFIG.customClass;
+			config.activeTab = config.activeTab || VKI_CONFIG.activeTab;
 
 			var vki = new VKI(config, VKI_CONFIG.layout, VKI_CONFIG.deadkey, inputCallback);
 			vki.attachVki(element);
