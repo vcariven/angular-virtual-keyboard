@@ -297,7 +297,7 @@ var VKI = function(customConfig, layout, deadKeys, keyInputCallback) {
   }, false);
 
   if (!this.VKI_layout[this.VKI_kt])
-    return alert('No keyboard named "' + this.VKI_kt + '"');
+    return console.error('No keyboard named "' + this.VKI_kt + '"');
 
   this.VKI_langCode = {};
   var thead = document.createElement('thead');
