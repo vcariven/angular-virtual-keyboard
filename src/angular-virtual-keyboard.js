@@ -75,6 +75,7 @@ angular.module('angular-virtual-keyboard', [])
 			config.keyCenter = config.keyCenter || VKI_CONFIG.keyCenter;
 			config.sizeAdj = config.sizeAdj === false ? false : VKI_CONFIG.sizeAdj;
 			config.customClass = config.customClass || VKI_CONFIG.customClass;
+			config.activeTab = config.activeTab || VKI_CONFIG.activeTab;
 
 			var vki = new VKI(config, VKI_CONFIG.layout, VKI_CONFIG.deadkey, inputCallback);
 			vki.attachVki(element);
